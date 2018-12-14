@@ -93,9 +93,9 @@ float masterPart(int noProcesses,int processId,int size,int partLength,float *nu
     }
     int randomCounter=0;
     int randomCounter2=0;
-    struct timeval first, second, lapsed;
-    struct timezone tzp;
-    gettimeofday(&first, &tzp);
+    //struct timeval first, second, lapsed;
+    //struct timezone tzp;
+    //gettimeofday(&first, &tzp);
     for(;;)   //Begin the infinite loop until the median is found.
     {
         int counter=0;
@@ -123,14 +123,14 @@ float masterPart(int noProcesses,int processId,int size,int partLength,float *nu
                 median=pivot;
                 finalize=1;
                 MPI_Bcast(&finalize,1,MPI_INT,0,group); //FIRST(OPTIONAL) BROADCAST : WAIT FOR FINALIZE COMMAND OR NOT
-                gettimeofday(&second, &tzp);
-                if(first.tv_usec>second.tv_usec)
-                {
-                    second.tv_usec += 1000000;
-                    second.tv_sec--;
-                }
-                lapsed.tv_usec = second.tv_usec - first.tv_usec;
-                lapsed.tv_sec = second.tv_sec - first.tv_sec;
+                //gettimeofday(&second, &tzp);
+               // if(first.tv_usec>second.tv_usec)
+               // {
+               //     second.tv_usec += 1000000;
+                //    second.tv_sec--;
+              //  }
+              //  lapsed.tv_usec = second.tv_usec - first.tv_usec;
+              //  lapsed.tv_sec = second.tv_sec - first.tv_sec;
                // printf("Time elapsed: %lu, %lu s\n", lapsed.tv_sec, lapsed.tv_usec);
                 validation(median,partLength,size,numberPart,processId, group);
                 //MPI_Finalize();
@@ -247,14 +247,14 @@ float masterPart(int noProcesses,int processId,int size,int partLength,float *nu
 		    median=pivot;
 		    finalize=1; //dilwnw finalaize =1
 		    MPI_Bcast(&finalize,1,MPI_INT,0,group); //to stelnw se olous, oi opoioi an laboun finalize =1 tote kaloun MPI finalize k telos
-		    gettimeofday(&second, &tzp);
-            if(first.tv_usec>second.tv_usec)
-            {
-                second.tv_usec += 1000000;
-                second.tv_sec--;
-            }
-            lapsed.tv_usec = second.tv_usec - first.tv_usec;
-            lapsed.tv_sec = second.tv_sec - first.tv_sec;
+		   // gettimeofday(&second, &tzp);
+          //  if(first.tv_usec>second.tv_usec)
+          //  {
+          //      second.tv_usec += 1000000;
+          //      second.tv_sec--;
+          ///  }
+           //lapsed.tv_usec = second.tv_usec - first.tv_usec;
+          //  lapsed.tv_sec = second.tv_sec - first.tv_sec;
            // printf("Time elapsed: %lu, %lu s\n", lapsed.tv_sec, lapsed.tv_usec);
 		    validation(median,partLength,size,numberPart,processId, group);
             //MPI_Finalize();
