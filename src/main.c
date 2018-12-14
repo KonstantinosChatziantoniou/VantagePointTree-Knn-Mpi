@@ -23,12 +23,19 @@ void assignMpiLeavesToProcs(int level , int maxLevelplus ,  int index , int* cou
 
 void printPointsToCsv(float* points ,int length , int dimensions , float *medians , int rank , char* args);
 
+
+void checkKnnGlobally(int currentPos, int trlen , int* Status, int* nodeAdded, int* nodeChecked ,float* vp , float* mpiTree , int dimensions, knnVars* obj);
+  
+int isLeaf(int pos, int trlen);
+void checkIfChildrenChecked(int pos, int* nodeChecked);
 int main(int argc , char **argv){
 
     int processId,noProcesses;
     int size, partLength;
-
-
+    //-------------- For Time Measuring -------------------------//
+    FILE* fileTime = fopen("time.csv","w");
+    struct timeval startVal, endVal;
+    struct timezone tz;
     //-------------- Every process uses these vars --------------//
     float median;
     float *pointArr;
@@ -51,7 +58,7 @@ int main(int argc , char **argv){
     MPI_Init (&argc, &argv);	/* starts MPI */
     MPI_Comm_rank (MPI_COMM_WORLD, &processId);	/* get current process id */
     MPI_Comm_size (MPI_COMM_WORLD, &noProcesses);	/* get number of processes */
-    printf("Problem size = %d, Number of processes = %d\n",size , noProcesses);
+   // printf("Problem size = %d, Number of processes = %d\n",size , noProcesses);
 
 
 
@@ -81,11 +88,11 @@ int main(int argc , char **argv){
         float* nbrs = getNeigbours(obj);
         
         for(int i = 0; i < 3; i++){
-            printf("neighbour %d: \t",i);
+           // printf("neighbour %d: \t",i);
             for(int j = 0; j < dimensions; j++){
-                printf("x%d %f\t",j,nbrs[i*(dimensions+1)+j]);
+               // printf("x%d %f\t",j,nbrs[i*(dimensions+1)+j]);
             }
-            printf("distance = %f\n",nbrs[i*(dimensions+1)+dimensions]);
+          //  printf("distance = %f\n",nbrs[i*(dimensions+1)+dimensions]);
         }
             _finishKnnSearch(obj);
             free(pointArr);
@@ -120,6 +127,7 @@ int main(int argc , char **argv){
     int group_point_size;
     //int level = noProcesses;
     //ITER_TAG
+    gettimeofday(&startVal, &tz);
     for(int level = noProcesses; level > 1; level = level/2){
 
          //----- Split the communicators -----//
@@ -139,11 +147,11 @@ int main(int argc , char **argv){
         //----- Choose Vantage Point and send it to slaves -----//
         if(group_rank == 0){
             memcpy(vp , &pointArr[(partLength-1)*dimensions] , dimensions*sizeof(float));
-            printf("Vantage Point%d ",processId);
+           // printf("Vantage Point%d ",processId);
             for(int j = 0; j < dimensions; j++){
-                printf("x%d %f\t",j,vp[j]);
+               // printf("x%d %f\t",j,vp[j]);
             }
-            printf("\n");
+         //   printf("\n");
             partLength--;
             group_point_size--;
             MPI_Bcast(vp , dimensions , MPI_FLOAT , 0 , group_comm);            
@@ -163,7 +171,7 @@ int main(int argc , char **argv){
         {
             median = masterPart(group_size , group_rank , group_point_size , partLength , numberPart , group_comm , pointArr );
             MPI_Bcast(&median , 1 , MPI_FLOAT , 0 , group_comm);
-            printf("-------------> MEDIAN = %f\n",median);
+           // printf("-------------> MEDIAN = %f\n",median);
         }else{
             slavePart(group_rank , partLength , numberPart , group_point_size , group_comm , pointArr);
             MPI_Bcast(&median , 1 , MPI_FLOAT , 0  , group_comm);
@@ -259,7 +267,7 @@ int main(int argc , char **argv){
                 }
             }
             for(int i = 0; i < group_size; i++){
-                printf("length to receive:%d   %d\n",i , lengths_to_receieve[i]);
+              //  printf("length to receive:%d   %d\n",i , lengths_to_receieve[i]);
             }
 
             //------ Send the lengths of the arr to expect for malloc -----//
@@ -521,7 +529,7 @@ int main(int argc , char **argv){
                 dist = sqrt(dist); //SQUARED_TAG
                 //printf("dist%d = %f\n",group_rank,dist);
                 if(dist > median){
-                    printf("YOU SUCK! rank %d\n",group_rank);
+                    //printf("YOU SUCK! rank %d\n",group_rank);
                     //for(int k = 0; k < dimensions; k++){
                         //printf("problemx%d-%d %f \t",i,group_rank,pointArr[i*dimensions + k]);
                    // }
@@ -538,7 +546,7 @@ int main(int argc , char **argv){
 
                 //printf("dist%d = %f\n",group_rank,dist);
                 if(dist < median){
-                    printf("YOU SUCK! rank %d\n",group_rank);
+                   // printf("YOU SUCK! rank %d\n",group_rank);
                     //for(int k = 0; k < dimensions; k++){
                        //printf("problemx%d-%d %f \t",i,group_rank,pointArr[i*dimensions + k]);
                     //}
@@ -561,8 +569,11 @@ int main(int argc , char **argv){
     }//END_ITER_TAG
 
     MPI_Barrier(MPI_COMM_WORLD);
-    printf("ended distr vp tree %d \n",processId);
-
+    if(processId == 0){
+    gettimeofday(&endVal , &tz);
+    fprintf(fileTime,"vp time %ld s , %ld us\n", endVal.tv_sec -startVal.tv_sec  ,endVal.tv_usec - startVal.tv_usec );
+    gettimeofday(&startVal,&tz);
+    }
  
     //-------------- ROOT recieves mpitrees from even processes to merge it --------------//
     int treeLength = (noProcesses-1);
@@ -610,7 +621,7 @@ int main(int argc , char **argv){
         //--------------------------------- high_pos = root_pos + 2^(maxLevel - currentLevel) -//
         
         //printf("restructuring tree --------------------\n");
-        changeMpiTreeStructure(mpiTree2 , finalMpiTree , trlen , 0 , 0 , 0,dimensions);
+        //changeMpiTreeStructure(mpiTree2 , finalMpiTree , trlen , 0 , 0 , 0,dimensions);
         //printf("restructuring tree --------------------\n");
        /* for(int i = 0; i < treeLength; i++){
             printf("index %d\t",i);
@@ -622,6 +633,8 @@ int main(int argc , char **argv){
             printf("median %f\n",finalMpiTree[i*(dimensions+1) + dimensions]);
         }
             */
+        //INSTEAD
+        memcpy(finalMpiTree , mpiTree2 ,sizeof(float)*(dimensions+1)*(noProcesses-1));
         PrintMpiTreeToCsv(finalMpiTree , noProcesses-1 , dimensions);
 
 
@@ -656,27 +669,69 @@ int main(int argc , char **argv){
         printf("median = %f\n",mediansTree[i]);
     }*/
     //-------------------------- SINGLE THREAD KNN SEARCH ---------------------------------//
+    char rankchar[5] ;
+    sprintf(rankchar , "%d",processId);
+    char name[20]  = "nbrs";
+    strcat(name , rankchar);
+    strcat(name , ".csv");
+    FILE* file  = fopen(name , "w");
+    int k = 3;
     knnVars*  obj;
-    obj = _initForKnnSearch(3 , log2(partLength + 1) - 1 , dimensions , pointArr , mediansTree , 0);
-    startSearchKnn(obj , 0 , 0);
-    float* nbrs = getNeigbours(obj);
-    //_finishKnnSearch(obj);
-    
-
-    //---- Assign a leaf from mpiTree to a proc ----//
-    /*int counter = 0;
-    int* procs = (int*)malloc(sizeof(int)*noProcesses);
-    assignMpiLeavesToProcs(0 , log2(noProcesses) , 0 , &counter , procs );
-    if(processId == 0){
-        for(int i = 0; i < noProcesses; i++){
-            printf("rank: %d counter = %d -> leaf index %d\n",i,counter,procs[i]);
+    float* nbrsSave = (float*)malloc(sizeof(float)*(dimensions+1)*k*partLength);
+    for(int i = 0; i < partLength; i++){
+       obj = _initForKnnSearch(k , log2(partLength + 1) - 1 , dimensions , pointArr , mediansTree , i);       
+        startSearchKnn(obj , 0 , 0);
+        float* nbrs = getNeigbours(obj);
+        memcpy(&nbrsSave[i*(dimensions+1)*k],nbrs,sizeof(float)*k*(dimensions+1)); 
+        int* nodeChecked = (int*)malloc(sizeof(int)*(treeLength+noProcesses)); 
+        int* nodeAdded = (int*)malloc(sizeof(int)*(treeLength+noProcesses));
+       // printf("DEBUG4-%d----%d\n",treeLength+noProcesses,treeLength+processId);
+        for(int j = 0; j < treeLength + noProcesses; j++){
+            nodeChecked[j] = 0;
+            if(j == processId+treeLength){
+                //printf("did it\n");
+                nodeChecked[j] = 2;
+            }
+            if(j == treeLength + 2){
+               //printf("tried it\n");
+                //nodeChecked[j] = 2;
+                //printf("did it\n");
+            }
         }
-    }*/
 
+        //----- Print negihbours to file ----///
+        //nodeChecked[treeLength+processId] = 1;
+        int Status66 = -1;
+        checkKnnGlobally(treeLength + processId , treeLength , &Status66  ,nodeAdded , nodeChecked , obj->vp , finalMpiTree , dimensions , obj);
+      //  printf("STAAAAAAAAATTTTTTTTUUUUUUUUUSSSSSSSSSSSS =-%d- %d\n",Status66,processId);
+        for(int j = 0; j < dimensions; j++){
+            fprintf(file , "%f,",obj->vp[j]);
+        }fprintf(file,"%f\n",0.0000);
+        for(int l = 0; l < k; l++){
+            for(int j = 0; j < dimensions; j++){
+                fprintf(file,"%f,",obj->nbrs[l*(dimensions+1)+j]);
+            }
+            fprintf(file,"%f\n",obj->nbrs[l*(dimensions + 1)+ dimensions]);
+        }
+        _finishKnnSearch(obj);
+        free(nodeChecked); 
+        free(nodeAdded);
+    }
+    fclose(file);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(processId == 0){
+    gettimeofday(&startVal , &tz);
+    fprintf(fileTime ,"vp time %ld s , %ld us\n", startVal.tv_sec-endVal.tv_sec   , startVal.tv_usec -endVal.tv_usec );
+    }
+    fclose(fileTime);
+    
+    free(nbrsSave);
     free(finalMpiTree); 
     free(mediansTree);
     free(mpiTreeSaver);
     free(pointArr);
+
     MPI_Finalize();
     return 0;
 }
@@ -834,11 +889,87 @@ void PrintNeigboursListToCsv(){
 void assignMpiLeavesToProcs(int level , int maxLevelplus ,  int index , int* counter , int* procs){
     if(level == maxLevelplus){
         procs[*counter] = index;
-        printf("COUNTERRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR %d\n",*counter);
+        //printf("COUNTERRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR %d\n",*counter);
         *counter = *counter + 1;
         return;
     }
     assignMpiLeavesToProcs(level + 1 , maxLevelplus , index+1 , counter , procs);
     assignMpiLeavesToProcs(level + 1 , maxLevelplus , index + pow(2 , maxLevelplus - level),counter,procs);
 
+}
+
+void checkKnnGlobally(int currentPos, int trlen , int* Status66, int* nodeAdded, int* nodeChecked ,float* vp , float* mpiTree , int dimensions, knnVars* obj){
+    if(isLeaf(currentPos,trlen) == 0){
+        checkIfChildrenChecked(currentPos, nodeChecked);
+        if(nodeAdded[currentPos] == 1){
+            nodeAdded[currentPos] = 1;
+            float dist = 0;
+            for(int i = 0; i < dimensions; i++){
+                dist += pow(vp[i] - mpiTree[currentPos*(dimensions+1)+i],2);
+            }
+            dist = sqrt(dist);
+            addNeighbour(obj,&mpiTree[currentPos*(dimensions+1)],dist);
+        }
+    }
+    if(currentPos == 0 && nodeChecked[0] > 0){
+        *Status66 = 666;
+        return;
+    }
+    if(nodeChecked[currentPos] > 0){
+
+        if(currentPos%2 == 0)
+            checkKnnGlobally((currentPos-2)/2 , trlen , Status66 , nodeAdded , nodeChecked , vp  ,  mpiTree ,  dimensions , obj);
+        else    
+            checkKnnGlobally((currentPos-1)/2, trlen , Status66 , nodeAdded , nodeChecked, vp  ,  mpiTree ,  dimensions , obj);
+    }else{
+        if(isLeaf(currentPos , trlen)){
+
+            // printf("STUFF %d----------%d\n",(currentPos-1)/2,currentPos);
+            *Status66 = currentPos - trlen;
+            nodeChecked[currentPos] = 3;
+        }else{
+            float dist = 0;
+            float median = mpiTree[currentPos*(dimensions+1)+dimensions];
+            for(int i = 0; i < dimensions; i++){
+                dist += pow(vp[i] - mpiTree[currentPos*(dimensions+1)+i],2);
+            }
+            dist = sqrt(dist);
+            if(dist <= median){
+                if(nodeChecked[2*currentPos+1] == 0){
+                    checkKnnGlobally(2*currentPos+1, trlen , Status66 , nodeAdded , nodeChecked, vp  ,  mpiTree ,  dimensions,obj);
+                }else{
+                    if(dist + obj->tau >= median){
+                        checkKnnGlobally(2*currentPos+2, trlen , Status66 , nodeAdded , nodeChecked, vp  ,  mpiTree ,  dimensions,obj);     
+                    }else{
+                        *Status66 = 666;
+                    }               
+                }
+            }else{
+                 if(nodeChecked[2*currentPos+2] == 0){
+                    checkKnnGlobally(2*currentPos+2, trlen , Status66 , nodeAdded , nodeChecked, vp  ,  mpiTree ,  dimensions,obj);
+                }else{
+                    if(dist - obj->tau <= median){
+                        checkKnnGlobally(2*currentPos+1, trlen , Status66 , nodeAdded , nodeChecked, vp  ,  mpiTree ,  dimensions,obj);
+                    }else{
+                        *Status66 = 666;
+                    }
+                }
+            }
+        }
+    }
+}
+
+int isLeaf(int pos, int trlen){
+    if(pos < trlen){
+        return 0;
+    }
+    return 1;
+}
+
+void checkIfChildrenChecked(int pos, int* nodeChecked){
+    if(nodeChecked[2*pos+1] >0 && nodeChecked[2*pos + 2] >0){
+        nodeChecked[pos] = 4;
+        return;
+    }
+    nodeChecked[pos] = 0;
 }
