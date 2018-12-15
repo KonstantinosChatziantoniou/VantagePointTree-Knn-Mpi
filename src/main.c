@@ -796,7 +796,10 @@ int main(int argc , char **argv){
     free(mediansTree);
     free(mpiTreeSaver);
     free(pointArr);
-
+    char hostname[MPI_MAX_PROCESSOR_NAME];
+    int len;
+    MPI_Get_processor_name(hostname,&len);
+    printf("rank %d/%d running on %s\n",processId ,noProcesses , hostname);
     MPI_Finalize();
     return 0;
 }
