@@ -206,16 +206,18 @@ int main(int argc , char **argv){
             if(countEq == 1){
                 for(int i = len_arr_small; i < partLength;i++){
                     if(numberPart[i] == median){
-                        if(i == len_arr_small){
-                            break;
-                        }else{
-                            swap_values(numberPart , len_arr_small , i , pointArr);
-                        }
+                        
+                        swap_values(numberPart , len_arr_small , i , pointArr);
+
+                        len_arr_small++;
+                        len_arr_big--;
+                        
+                    }
+                    if(len_arr_big == len_arr_small){
+                        break;
                     }
                     
                 }
-                len_arr_small++;
-                len_arr_big--;
                 hiloarr[0][0] = len_arr_small;
                 hiloarr[0][1] = len_arr_big;
                 arr_big = &numberPart[len_arr_small];
@@ -402,16 +404,18 @@ int main(int argc , char **argv){
             if(countEq == 1){
                 for(int i = len_arr_small; i < partLength;i++){
                     if(numberPart[i] == median){
-                        if(i == len_arr_small){
-                            break;
-                        }else{
-                            swap_values(numberPart , len_arr_small , i , pointArr);
-                        }
+                        
+                        swap_values(numberPart , len_arr_small , i , pointArr);
+
+                        len_arr_small++;
+                        len_arr_big--;
+                        
+                    }
+                    if(len_arr_big == len_arr_small){
+                        break;
                     }
                     
                 }
-                len_arr_small++;
-                len_arr_big--;
                 hl[0] = len_arr_small;
                 hl[1] = len_arr_big;
                 arr_big = &numberPart[len_arr_small];
