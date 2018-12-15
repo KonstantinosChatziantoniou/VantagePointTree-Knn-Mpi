@@ -1,5 +1,5 @@
 CC = mpicc
-CFLAGS = -O2
+CFLAGS = -O2 -std=c99
 LIBS = -lm -Wall -Wextra
 OBJDIR = ./bin
 HDRDIR = ./headers
