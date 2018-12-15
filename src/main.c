@@ -630,12 +630,12 @@ int main(int argc , char **argv){
 
     }//END_ITER_TAG
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    /*MPI_Barrier(MPI_COMM_WORLD);
     if(processId == 0){
     gettimeofday(&endVal , NULL);
     fprintf(fileTime,"vp time %ld s , %ld us\n", endVal.tv_sec -startVal.tv_sec  ,endVal.tv_usec - startVal.tv_usec );
     gettimeofday(&startVal,NULL);
-    }
+    }*/
     printf("ENDDDDDDDD PARTLENGTH %d %d\n",processId , partLength);
     
     //-------------- ROOT recieves mpitrees from even processes to merge it --------------//
@@ -726,6 +726,13 @@ int main(int argc , char **argv){
     STVantagePointTree(pointArr , mediansTree , partLength , dimensions);
     printf("ended making tree rank %d\n",processId);
     PrintToCSV(pointArr , mediansTree , partLength , dimensions , processId);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(processId == 0){
+    gettimeofday(&endVal , NULL);
+    fprintf(fileTime,"vp time %ld s , %ld us\n", endVal.tv_sec -startVal.tv_sec  ,endVal.tv_usec - startVal.tv_usec );
+    gettimeofday(&startVal,NULL);
+    }
     /*for(int i = 0; i < partLength; i++){
         printf("ndx%d\t",i);
         for(int j = 0; j < dimensions; j++){
