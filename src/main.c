@@ -202,18 +202,60 @@ int main(int argc , char **argv){
             hiloarr[0][2] = countEq;
             hiloarr[0][3] = countMin;
             hiloarr[0][4] = countMax;
-            //------- Balance high an low arrs so they have the same length ---------//
-            if(countEq == 1){
+
+            for(int j = 1; j < group_size; j++)
+            {
+                hiloarr[j] = (int*)malloc(5*sizeof(int));
+                MPI_Recv(hiloarr[j],5,MPI_INT,j,0,group_comm,NULL);
+            }  
+            for(int i = 0; i < group_size; i++){
+                for(int j = 0; j < 5; j++){
+                    printf("%d\t",hiloarr[i][j]);
+                }
+                printf("\n");
+            }          
+            int sumSmall = 0;
+            int sumBig = 0;
+            for(int i = 0; i < group_size; i++){
+                sumSmall += hiloarr[i][0];
+                sumBig += hiloarr[i][1];
+
+            }
+
+            int* howManySwaps = (int*)malloc(sizeof(int)*group_size);
+            for(int i = 0; i < group_size; i++){
+                howManySwaps[i] = 0;
+            }
+            int procCounter = 0;
+            for(int i = 0; i < group_size; i++){
+                
+                while(sumSmall != sumBig && hiloarr[i][2] > 0){
+                    hiloarr[i][2]--;
+                    sumSmall++;
+                    sumBig--;
+                    howManySwaps[i]++;
+
+                }
+
+                if(sumSmall == sumBig) break;
+            }
+            printf("SMAAAAAALLLL %d     BIIIIIIIIGGGGGG %d\n",sumSmall , sumBig);
+            for(int i = 1; i < group_size; i++){
+                MPI_Send(&howManySwaps[i],1,MPI_INT , i , 9 ,  group_comm);
+
+            }
+
+            if(howManySwaps[0] > 0){
                 for(int i = len_arr_small; i < partLength;i++){
                     if(numberPart[i] == median){
                         
                         swap_values(numberPart , len_arr_small , i , pointArr);
-
+                        howManySwaps[0]--;
                         len_arr_small++;
                         len_arr_big--;
                         
                     }
-                    if(len_arr_big == len_arr_small){
+                    if(howManySwaps[0] == 0){
                         break;
                     }
                     
@@ -223,12 +265,21 @@ int main(int argc , char **argv){
                 arr_big = &numberPart[len_arr_small];
             }
 
+            for(int i = 1; i < group_size; i++){
+                hiloarr[i][0] += howManySwaps[i];
+                hiloarr[i][1]-= howManySwaps[i];
+            }
+            //------- Balance high an low arrs so they have the same length ---------//
+            free(howManySwaps);
+             for(int i = 0; i < group_size; i++){
+                for(int j = 0; j < 5; j++){
+                    printf("|%d|\t",hiloarr[i][j]);
+                }
+                printf("\n");
+            }          
+
             //-------- Receive high an low lengths from slaves --------//
-            for(int j = 1; j < group_size; j++)
-            {
-                hiloarr[j] = (int*)malloc(5*sizeof(int));
-                MPI_Recv(hiloarr[j],5,MPI_INT,j,0,group_comm,NULL);
-            }/*
+            /*
             printf("---------->rank: %d low: %d high: %d  eq: %d  cmin: %d   cmax: %d\n",processId,hiloarr[0][0] , hiloarr[0][1] , hiloarr[0][2], hiloarr[0][3], hiloarr[0][4]);
             for(int j = 1; j < group_size; j++)
             {
@@ -269,7 +320,7 @@ int main(int argc , char **argv){
                 }
             }
             for(int i = 0; i < group_size; i++){
-              //  printf("length to receive:%d   %d\n",i , lengths_to_receieve[i]);
+               printf("length to receive:%d   %d\n",i , lengths_to_receieve[i]);
             }
 
             //------ Send the lengths of the arr to expect for malloc -----//
@@ -400,28 +451,33 @@ int main(int argc , char **argv){
             hl[2] = countEq;
             hl[3] = countMin;
             hl[4] = countMax;
+            MPI_Send(hl , 5 , MPI_INT , 0 , 0 , group_comm);
+            int howManySwaps;
+            MPI_Recv(&howManySwaps , 1 , MPI_INT , 0 , 9 , group_comm , NULL);
             //----- Balance high and low arrays to have the same length -----//
-            if(countEq == 1){
+
+            if(howManySwaps > 0){
                 for(int i = len_arr_small; i < partLength;i++){
                     if(numberPart[i] == median){
                         
                         swap_values(numberPart , len_arr_small , i , pointArr);
-
+                        howManySwaps--;
                         len_arr_small++;
                         len_arr_big--;
                         
                     }
-                    if(len_arr_big == len_arr_small){
+                    if(howManySwaps == 0){
                         break;
                     }
                     
                 }
-                hl[0] = len_arr_small;
-                hl[1] = len_arr_big;
-                arr_big = &numberPart[len_arr_small];
+                
             }
             //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!//
-            MPI_Send(hl , 5 , MPI_INT , 0 , 0 , group_comm);
+            printf("rank %d small %d big  %d\n",processId , len_arr_small , len_arr_big);
+            hl[0] = len_arr_small;
+                hl[1] = len_arr_big;
+                arr_big = &numberPart[len_arr_small];
 
             //----- Get the length to malloc for swaps -----//
             int length_to_malloc;
@@ -557,8 +613,10 @@ int main(int argc , char **argv){
                    // printf("\n");
                 }
             }
+
+       
         }
-        
+         printf("PARTLENGTH %d %d\n",processId , partLength);
            
         
         free(points_to_receive);
@@ -578,7 +636,8 @@ int main(int argc , char **argv){
     fprintf(fileTime,"vp time %ld s , %ld us\n", endVal.tv_sec -startVal.tv_sec  ,endVal.tv_usec - startVal.tv_usec );
     gettimeofday(&startVal,NULL);
     }
-    printf("PARTLENGTH %d %d\n",processId , partLength);
+    printf("ENDDDDDDDD PARTLENGTH %d %d\n",processId , partLength);
+    
     //-------------- ROOT recieves mpitrees from even processes to merge it --------------//
     int treeLength = (noProcesses-1);
     float* finalMpiTree = (float*)malloc(sizeof(float)*(dimensions+1)*(noProcesses-1));
