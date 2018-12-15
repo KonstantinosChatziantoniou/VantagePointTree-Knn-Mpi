@@ -218,6 +218,9 @@ float selection(float *array,int number,float* points)
     float pivot;
     float median;
     k=(int)number/2+1;
+    if(number == 0){
+        printf("GOTCHA\n");
+    }
     arraytobeused=array;
     for(;;)
     {

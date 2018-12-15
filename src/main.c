@@ -35,7 +35,7 @@ int main(int argc , char **argv){
     //-------------- For Time Measuring -------------------------//
     FILE* fileTime = fopen("time.csv","w");
     struct timeval startVal, endVal;
-    struct timezone tz;
+    //struct timezone tz;
     //-------------- Every process uses these vars --------------//
     float median;
     float *pointArr;
@@ -127,7 +127,7 @@ int main(int argc , char **argv){
     int group_point_size;
     //int level = noProcesses;
     //ITER_TAG
-    gettimeofday(&startVal, &tz);
+    gettimeofday(&startVal, NULL);
     for(int level = noProcesses; level > 1; level = level/2){
 
          //----- Split the communicators -----//
@@ -570,11 +570,11 @@ int main(int argc , char **argv){
 
     MPI_Barrier(MPI_COMM_WORLD);
     if(processId == 0){
-    gettimeofday(&endVal , &tz);
+    gettimeofday(&endVal , NULL);
     fprintf(fileTime,"vp time %ld s , %ld us\n", endVal.tv_sec -startVal.tv_sec  ,endVal.tv_usec - startVal.tv_usec );
-    gettimeofday(&startVal,&tz);
+    gettimeofday(&startVal,NULL);
     }
- 
+    printf("PARTLENGTH %d %d\n",processId , partLength);
     //-------------- ROOT recieves mpitrees from even processes to merge it --------------//
     int treeLength = (noProcesses-1);
     float* finalMpiTree = (float*)malloc(sizeof(float)*(dimensions+1)*(noProcesses-1));
@@ -659,7 +659,9 @@ int main(int argc , char **argv){
 
     //---------------------- SINGLE THREAD VPTree CREATION --------------------------------//
     mediansTree = (float*)malloc(sizeof(float)*partLength);
+    printf("started making tree rank %d\n",processId);
     STVantagePointTree(pointArr , mediansTree , partLength , dimensions);
+    printf("ended making tree rank %d\n",processId);
     PrintToCSV(pointArr , mediansTree , partLength , dimensions , processId);
     /*for(int i = 0; i < partLength; i++){
         printf("ndx%d\t",i);
@@ -721,7 +723,7 @@ int main(int argc , char **argv){
 
     MPI_Barrier(MPI_COMM_WORLD);
     if(processId == 0){
-    gettimeofday(&startVal , &tz);
+    gettimeofday(&startVal , NULL);
     fprintf(fileTime ,"vp time %ld s , %ld us\n", startVal.tv_sec-endVal.tv_sec   , startVal.tv_usec -endVal.tv_usec );
     }
     fclose(fileTime);
@@ -771,6 +773,9 @@ void STVantagePointTree(float* pointArr ,float* numberPart , int length , int di
     if(length == 1){
         return;
     }
+    if(length == 2){
+        printf("GOTCHA2\n");
+    }
 
     
     //----- Get Vantage Point -----//
@@ -800,6 +805,8 @@ void STVantagePointTree(float* pointArr ,float* numberPart , int length , int di
       //  printf("distance %f\n",numberPart[i]);
     }
     float median = selection(&numberPart[1] , length , arrToUse);
+    int v1,v2,v3;
+    validationST(median, length , numberPart , &v1,&v2,&v3);
 
     //printf("MEDIAN %f\n",median);
     memcpy(&numberPart[0] , &median, sizeof(float));
@@ -818,11 +825,13 @@ void STVantagePointTree(float* pointArr ,float* numberPart , int length , int di
     //printf("LLLLLLLLEEEEEEEENGGGGGGGGTHHHHSSS %d big %d median %f\n",len_arr_small , len_arr_big,median);
     for(int i = len_arr_small; i < length;i++){
         if(numPartToUse[i] == median){
-            if(i == len_arr_small){
-                break;
-            }else{
-                swap_values(numPartToUse , len_arr_small , i , arrToUse);
-            }
+            swap_values(numPartToUse , len_arr_small , i , arrToUse);
+            len_arr_small++;
+            len_arr_big--;
+            
+        }
+        if(len_arr_small == len_arr_big){
+            break;
         }
         
     }
@@ -830,8 +839,11 @@ void STVantagePointTree(float* pointArr ,float* numberPart , int length , int di
         arr_small = numPartToUse;
     }
     //printf("len arr small %d        len arr big %d\n",len_arr_small , len_arr_big);
-    len_arr_small++;
-    len_arr_big--;
+    //len_arr_small++;
+    //len_arr_big--;
+    if(len_arr_small != len_arr_big){
+        printf("gotchaaaaaaaaaaa3 small %d   , big %d\n",len_arr_small , len_arr_big);
+    }
     for(int i = 0; i < len_arr_small; i++){
        // printf("arrsmall: %f\n",arr_small[i]);
 
