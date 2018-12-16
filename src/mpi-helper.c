@@ -8,7 +8,7 @@
 
 #include "../headers/median-funcs.h"
 
-
+MPI_Status mpistatus;
 /***Calculate Lengths and Send them to the corresponding Node***/
 void sendLengths(int size,int noProcesses , MPI_Comm group)
 {
@@ -276,7 +276,7 @@ float masterPart(int noProcesses,int processId,int size,int partLength,float *nu
         {
             if(activeNodes[i]!=0)
             {
-                MPI_Recv(&flag,1,MPI_INT,activeNodes[i],1,group,NULL);  //FIRST RECEIVE : RECEIVE active or not
+                MPI_Recv(&flag,1,MPI_INT,activeNodes[i],1,group,&mpistatus);  //FIRST RECEIVE : RECEIVE active or not
                 if(flag==1)
                     removeElement(activeNodes, &activeSize, activeNodes[i]);
             }

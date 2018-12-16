@@ -41,7 +41,7 @@ int main(int argc , char **argv){
     float *pointArr;
     float *vp;
     float *mpiTreeSaver;
-    int mpiTreeCounter;
+    int mpiTreeCounter = 0;
     float *numberPart;
     float* points_to_receive;
     float *mediansTree;
@@ -55,6 +55,7 @@ int main(int argc , char **argv){
     //printPointsToCsv(points_to_receive , -1 , -1 ,points_to_receive , processId , "w");
 
     //------------------------ Start MPI -------------------------//
+    MPI_Status mpistatus;
     MPI_Init (&argc, &argv);	/* starts MPI */
     MPI_Comm_rank (MPI_COMM_WORLD, &processId);	/* get current process id */
     MPI_Comm_size (MPI_COMM_WORLD, &noProcesses);	/* get number of processes */
@@ -112,7 +113,7 @@ int main(int argc , char **argv){
         sendLengths(size,noProcesses,MPI_COMM_WORLD);   
     }else
     {
-        MPI_Recv(&partLength,1,MPI_INT,0,1,MPI_COMM_WORLD,NULL);        
+        MPI_Recv(&partLength,1,MPI_INT,0,1,MPI_COMM_WORLD,&mpistatus);        
     }
 
     mpiTreeSaver = (float*)malloc((log2(noProcesses))*(1+dimensions)*sizeof(float)); //TREE_LEN_TAG
@@ -206,7 +207,7 @@ int main(int argc , char **argv){
             for(int j = 1; j < group_size; j++)
             {
                 hiloarr[j] = (int*)malloc(5*sizeof(int));
-                MPI_Recv(hiloarr[j],5,MPI_INT,j,0,group_comm,NULL);
+                MPI_Recv(hiloarr[j],5,MPI_INT,j,0,group_comm,&mpistatus);
             }  
             for(int i = 0; i < group_size; i++){
                 for(int j = 0; j < 5; j++){
@@ -348,7 +349,7 @@ int main(int argc , char **argv){
                         MPI_Send(message , 3 , MPI_INT, jc , 1 , group_comm);
                         if(i == 0){
                            // printf("started1 receiving rank %d points %d from %d\n",group_rank , message[2] , jc);
-                            MPI_Recv(&points_to_receive[tempHaveReceived] , message[2]*dimensions , MPI_FLOAT , jc , 2, group_comm , NULL);
+                            MPI_Recv(&points_to_receive[tempHaveReceived] , message[2]*dimensions , MPI_FLOAT , jc , 2, group_comm , &mpistatus);
                            // printf("done1 receiving rank %d points %d from %d\n",group_rank , message[2] , jc);
                             tempHaveReceived += message[2]*dimensions;
                         }else{
@@ -367,7 +368,7 @@ int main(int argc , char **argv){
                         MPI_Send(message , 3 , MPI_INT , jc , 1 , group_comm);
                         if(i == 0){
                           //  printf("started2 receiving rank %d points %d from %d\n",group_rank , message[2] , jc);
-                            MPI_Recv(&points_to_receive[tempHaveReceived] , message[2]*dimensions , MPI_FLOAT , jc , 2 , group_comm , NULL);
+                            MPI_Recv(&points_to_receive[tempHaveReceived] , message[2]*dimensions , MPI_FLOAT , jc , 2 , group_comm , &mpistatus);
                             tempHaveReceived += message[2]*dimensions;
                           //  printf("done2 receiving rank %d points %d from %d\n",group_rank , message[2] , jc);
                         }else{
@@ -453,7 +454,7 @@ int main(int argc , char **argv){
             hl[4] = countMax;
             MPI_Send(hl , 5 , MPI_INT , 0 , 0 , group_comm);
             int howManySwaps;
-            MPI_Recv(&howManySwaps , 1 , MPI_INT , 0 , 9 , group_comm , NULL);
+            MPI_Recv(&howManySwaps , 1 , MPI_INT , 0 , 9 , group_comm , &mpistatus);
             //----- Balance high and low arrays to have the same length -----//
 
             if(howManySwaps > 0){
@@ -481,7 +482,7 @@ int main(int argc , char **argv){
 
             //----- Get the length to malloc for swaps -----//
             int length_to_malloc;
-            MPI_Recv(&length_to_malloc , 1 , MPI_INT , 0 , 0 , group_comm , NULL);
+            MPI_Recv(&length_to_malloc , 1 , MPI_INT , 0 , 0 , group_comm , &mpistatus);
             length_received = length_to_malloc;
             points_to_receive = (float*)malloc(sizeof(float)*dimensions*length_to_malloc);
             
@@ -491,7 +492,7 @@ int main(int argc , char **argv){
             int tempHaveSent = 0;
             while(1){
                 //printf("dddddddddddddddccccccchhhhhhhhiiiiiiiiiiillllllllllldddddddddd \n");
-                MPI_Recv(message , 3, MPI_INT , 0 , 1 , group_comm , NULL);
+                MPI_Recv(message , 3, MPI_INT , 0 , 1 , group_comm , &mpistatus);
                 if(message[0] == -1){
                     break;
                 }else if(message[0] == 0){
@@ -501,7 +502,7 @@ int main(int argc , char **argv){
                     tempHaveSent += message[2]*dimensions;
                 }else if(message[0] == 1){
                  //   printf("started1 receiving rank %d points %d from %d\n",group_rank , message[2] , message[1]);
-                    MPI_Recv(&points_to_receive[tempHaveReceived] , message[2]*dimensions , MPI_FLOAT , message[1] , 2 , group_comm , NULL );
+                    MPI_Recv(&points_to_receive[tempHaveReceived] , message[2]*dimensions , MPI_FLOAT , message[1] , 2 , group_comm , &mpistatus );
                    // printf("started1 receiving rank %d points %d from %d\n",group_rank , message[2] , message[1]);
                     tempHaveReceived += message[2]*dimensions;
                 }
@@ -510,7 +511,7 @@ int main(int argc , char **argv){
             tempHaveReceived = 0;
             tempHaveSent = 0;
             while(1){
-                MPI_Recv(message , 3, MPI_INT , 0 , 1 , group_comm , NULL);
+                MPI_Recv(message , 3, MPI_INT , 0 , 1 , group_comm , &mpistatus);
                 if(message[0] == -1){
                     break;
                 }else if(message[0] == 0){
@@ -520,7 +521,7 @@ int main(int argc , char **argv){
                     tempHaveSent += message[2]*dimensions;
                 }else{
                  //   printf("started22 getting rank %d points %d from %d\n",group_rank , message[2] , message[1]);
-                    MPI_Recv(&points_to_receive[tempHaveReceived] , message[2]*dimensions , MPI_FLOAT , message[1] , 2 , group_comm , NULL );
+                    MPI_Recv(&points_to_receive[tempHaveReceived] , message[2]*dimensions , MPI_FLOAT , message[1] , 2 , group_comm , &mpistatus );
                    // printf("done22 getting rank %d points %d from %d\n",group_rank , message[2] , message[1]);
                     tempHaveReceived += message[2]*dimensions;
                 }
@@ -653,7 +654,7 @@ int main(int argc , char **argv){
 
         //printf("restructuring tree -------------------- %d\n",i);
                 allMPITrees[i/2] = (float*)malloc(log2(noProcesses)*(1+dimensions)*sizeof(float));
-                MPI_Recv(allMPITrees[i/2] , log2(noProcesses)*(1+dimensions) , MPI_FLOAT , i , 4 , MPI_COMM_WORLD , NULL); //POSSIBLEERRORTAG
+                MPI_Recv(allMPITrees[i/2] , log2(noProcesses)*(1+dimensions) , MPI_FLOAT , i , 4 , MPI_COMM_WORLD , &mpistatus); //POSSIBLEERRORTAG
             }
         }
 
@@ -717,7 +718,7 @@ int main(int argc , char **argv){
         if(processId%2 == 0)
             MPI_Send(mpiTreeSaver ,log2(noProcesses)*(1+dimensions) , MPI_FLOAT , 0 , 4 , MPI_COMM_WORLD);
 
-        MPI_Recv(finalMpiTree , (dimensions+1)*(noProcesses-1) , MPI_FLOAT , 0 , 5 , MPI_COMM_WORLD , NULL);
+        MPI_Recv(finalMpiTree , (dimensions+1)*(noProcesses-1) , MPI_FLOAT , 0 , 5 , MPI_COMM_WORLD , &mpistatus);
     }
 
     //---------------------- SINGLE THREAD VPTree CREATION --------------------------------//
