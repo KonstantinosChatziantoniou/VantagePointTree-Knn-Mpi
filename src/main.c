@@ -49,6 +49,7 @@ int main(int argc , char **argv){
     size=atoi(argv[1]);
     size = pow(2 , size) - 1;
     int dimensions = atoi(argv[2]);
+    int input_k_for_knn = atoi(argv[3]);
     //int randomGenOrReadFile = atoi(argv[3]);
     _set_dimensions_for_indexing(dimensions);
 
@@ -671,38 +672,11 @@ int main(int argc , char **argv){
             }
         }
 
-       /* printf("restructuring tree --------------------\n");
-        for(int i = 0; i < treeLength; i++){
-            printf("index %d\t",i);
-            for(int j = 0; j < dimensions; j++){
-                printf("%f\t",mpiTree2[i*(dimensions+1) + j]);
-            }
-            printf("median %f\n",mpiTree2[i*(dimensions+1) + dimensions]);
-        }*/
-            //----- change tree structure -----//
-
-        //-------- CHANGE TREE STRUCTURE TO low_pos = root_pos + 1 ----------------------------//
-        //--------------------------------- high_pos = root_pos + 2^(maxLevel - currentLevel) -//
-        
-        //printf("restructuring tree --------------------\n");
-        //changeMpiTreeStructure(mpiTree2 , finalMpiTree , trlen , 0 , 0 , 0,dimensions);
-        //printf("restructuring tree --------------------\n");
-       /* for(int i = 0; i < treeLength; i++){
-            printf("index %d\t",i);
-            for(int j = 0; j < dimensions; j++){
-
-            printf("aasdasdasdasdasdasdasdasdasdasd = %d\n",i*(dimensions+1)+j);
-                printf("%f\t",finalMpiTree[i*(dimensions+1) + j]);
-            }
-            printf("median %f\n",finalMpiTree[i*(dimensions+1) + dimensions]);
-        }
-            */
-        //INSTEAD
         memcpy(finalMpiTree , mpiTree2 ,sizeof(float)*(dimensions+1)*(noProcesses-1));
         PrintMpiTreeToCsv(finalMpiTree , noProcesses-1 , dimensions);
 
 
-        for(int i = 0; i < noProcesses; i++){
+        for(int i = 1; i < noProcesses; i++){
             MPI_Send(finalMpiTree ,(dimensions+1)*(noProcesses-1) , MPI_FLOAT , i , 5 , MPI_COMM_WORLD );
         }
         free(mpiTree2);
@@ -726,14 +700,17 @@ int main(int argc , char **argv){
     printf("started making tree rank %d\n",processId);
     STVantagePointTree(pointArr , mediansTree , partLength , dimensions);
     printf("ended making tree rank %d\n",processId);
-    PrintToCSV(pointArr , mediansTree , partLength , dimensions , processId);
 
     MPI_Barrier(MPI_COMM_WORLD);
     if(processId == 0){
     gettimeofday(&endVal , NULL);
     fprintf(fileTime,"vp time %ld s , %ld us\n", endVal.tv_sec -startVal.tv_sec  ,endVal.tv_usec - startVal.tv_usec );
+
+   
     gettimeofday(&startVal,NULL);
     }
+
+    PrintToCSV(pointArr , mediansTree , partLength , dimensions , processId);
     /*for(int i = 0; i < partLength; i++){
         printf("ndx%d\t",i);
         for(int j = 0; j < dimensions; j++){
@@ -741,6 +718,12 @@ int main(int argc , char **argv){
         }
         printf("median = %f\n",mediansTree[i]);
     }*/
+
+
+
+
+
+
     //-------------------------- SINGLE THREAD KNN SEARCH ---------------------------------//
     char rankchar[5] ;
     sprintf(rankchar , "%d",processId);
@@ -748,50 +731,275 @@ int main(int argc , char **argv){
     strcat(name , rankchar);
     strcat(name , ".csv");
     FILE* file  = fopen(name , "w");
-    int k = 3;
+
+
+
+
+
+
+
+    int k_for_Knn = input_k_for_knn;
     knnVars*  obj;
-    float* nbrsSave = (float*)malloc(sizeof(float)*(dimensions+1)*k*partLength);
+    float* nbrsSave = (float*)malloc(sizeof(float)*(dimensions+1)*k_for_Knn*partLength);
     for(int i = 0; i < partLength; i++){
-       obj = _initForKnnSearch(k , log2(partLength + 1) - 1 , dimensions , pointArr , mediansTree , i);       
+       obj = _initForKnnSearch(k_for_Knn , log2(partLength + 1) - 1 , dimensions , pointArr , mediansTree , i);       
         startSearchKnn(obj , 0 , 0);
         float* nbrs = getNeigbours(obj);
-        memcpy(&nbrsSave[i*(dimensions+1)*k],nbrs,sizeof(float)*k*(dimensions+1)); 
-        int* nodeChecked = (int*)malloc(sizeof(int)*(treeLength+noProcesses)); 
-        int* nodeAdded = (int*)malloc(sizeof(int)*(treeLength+noProcesses));
-       // printf("DEBUG4-%d----%d\n",treeLength+noProcesses,treeLength+processId);
-        for(int j = 0; j < treeLength + noProcesses; j++){
-            nodeChecked[j] = 0;
-            if(j == processId+treeLength){
-                //printf("did it\n");
-                nodeChecked[j] = 2;
-            }
-            if(j == treeLength + 2){
-               //printf("tried it\n");
-                //nodeChecked[j] = 2;
-                //printf("did it\n");
-            }
-        }
-
-        //----- Print negihbours to file ----///
-        //nodeChecked[treeLength+processId] = 1;
-        int Status66 = -1;
-        checkKnnGlobally(treeLength + processId , treeLength , &Status66  ,nodeAdded , nodeChecked , obj->vp , finalMpiTree , dimensions , obj);
-      //  printf("STAAAAAAAAATTTTTTTTUUUUUUUUUSSSSSSSSSSSS =-%d- %d\n",Status66,processId);
-        for(int j = 0; j < dimensions; j++){
-            fprintf(file , "%f,",obj->vp[j]);
-        }fprintf(file,"%f\n",0.0000);
-        for(int l = 0; l < k; l++){
-            for(int j = 0; j < dimensions; j++){
-                fprintf(file,"%f,",obj->nbrs[l*(dimensions+1)+j]);
-            }
-            fprintf(file,"%f\n",obj->nbrs[l*(dimensions + 1)+ dimensions]);
-        }
+        memcpy(&nbrsSave[i*(dimensions+1)*k_for_Knn],nbrs,sizeof(float)*k_for_Knn*(dimensions+1)); 
         _finishKnnSearch(obj);
-        free(nodeChecked); 
-        free(nodeAdded);
+        
     }
-    fclose(file);
 
+
+    int* statusArray = (int*) malloc(sizeof(int)*partLength);
+    int* nodeChecked = (int*)malloc(sizeof(int)*(treeLength+noProcesses)*partLength); 
+    int* nodeAdded = (int*)malloc(sizeof(int)*(treeLength+noProcesses)*partLength);
+    int flagForSharedNbrs = 1;
+
+    //--- initialize node info ---//
+    for(int i = 0; i < partLength; i++){
+        for(int j = 0; j < treeLength + noProcesses; j++){
+            nodeChecked[i*(treeLength+noProcesses) + j] = 0;
+            nodeAdded[i*(treeLength+noProcesses) + j] = 0;
+            if(j == processId+treeLength){
+                nodeChecked[i*(treeLength+noProcesses) + j] = 2;
+            }
+        }
+        statusArray[i] = processId;
+    }
+
+    while(flagForSharedNbrs == 1){
+        //----------- CHECK the whole tree --------------//
+        for(int i = 0; i < partLength; i++){
+            if(statusArray[i] != 666){
+                obj = _initForKnnSearch(k_for_Knn , log2(partLength + 1) - 1 , dimensions , pointArr , mediansTree , i);    
+                //--- load previous neighbours
+                memcpy(obj->nbrs, &nbrsSave[i*(dimensions+1)],sizeof(float)*k_for_Knn*(dimensions+1)); 
+                obj->nbrsLength = k_for_Knn;
+                
+                //--- search the tree
+                int status66 = -1;
+                checkKnnGlobally(treeLength+statusArray[i], treeLength, &status66, &nodeAdded[i*(treeLength+noProcesses)], &nodeChecked[i*(treeLength+noProcesses)], obj->vp, finalMpiTree , dimensions, obj);
+                statusArray[i] = status66;
+                //printf("STATUS %d of point %d of proc %d\n",status66, i, processId);
+                _finishKnnSearch(obj);
+            }
+        }
+
+        int* counterForPointsToSend = (int*) malloc(sizeof(int)*noProcesses);
+        int* integralCounterForPointsToSent = (int*) malloc(sizeof(int)*noProcesses);
+        int* counterToStackPointsTosend = (int*)malloc(sizeof(int)*noProcesses);
+
+        //--- init counters
+        for(int i = 0; i < noProcesses; i++){
+            counterForPointsToSend[i] = 0;
+            integralCounterForPointsToSent[i] = 0;
+            counterToStackPointsTosend[i] = 0;
+        }
+        int rand666flag = 0;
+        for(int i = 0; i < partLength; i++){
+            if(statusArray[i] != 666){
+                rand666flag = 1;
+                counterForPointsToSend[statusArray[i]]++;
+            }
+        }
+
+        int rand666sum = 0;
+        MPI_Allreduce(&rand666flag ,  &rand666sum , 1 , MPI_INT , MPI_SUM  , MPI_COMM_WORLD);
+        if(rand666sum == 0) break;
+
+
+
+        int totalPointsToSent = 0;
+        for(int i = 0; i < noProcesses; i++){
+            totalPointsToSent += counterForPointsToSend[i];
+        
+            if(i > 0){
+                for(int j = 0; j < i; j++){
+                    integralCounterForPointsToSent[i] += counterForPointsToSend[j];
+                }
+            }
+        }
+        //-- malloc and point based on inits
+        float* pointsToSentForKnn = (float*)malloc(sizeof(float)*totalPointsToSent*(dimensions));
+        float** pointerForPointsToSend = (float**)malloc(sizeof(float*)*noProcesses);
+        for(int i = 0; i < noProcesses; i++){
+            pointerForPointsToSend[i] = &pointsToSentForKnn[integralCounterForPointsToSent[i]*dimensions];
+        }
+        for(int i = 0; i < partLength; i++){
+            if(statusArray[i] != 666){
+            // printf("status arr %d , conuter of stat %d\n",statusArray[i],counterToStackPointsTosend[statusArray[i]]*dimensions);
+                memcpy( &pointerForPointsToSend[statusArray[i]][counterToStackPointsTosend[statusArray[i]]*dimensions],&pointArr[i*dimensions],sizeof(float)*dimensions);
+                counterToStackPointsTosend[statusArray[i]]++;
+        }
+    }
+
+        //-- receive and send points
+        int* numberOfPointsToReceive = (int*)malloc(noProcesses*sizeof(int));
+        float** holderForArrPointsToRecv = (float**)malloc(sizeof(float*)*noProcesses);
+        for(int i = 0; i < noProcesses; i++){
+            if(processId == i){
+                for(int j = 0; j < noProcesses; j++){
+                    if(j != processId){
+                        MPI_Send(&counterForPointsToSend[j] , 1 , MPI_INT , j , 6 , MPI_COMM_WORLD);
+                        printf("rank %d sending length %d\n",processId , counterForPointsToSend[j]);
+                        MPI_Send(pointerForPointsToSend[j] , counterForPointsToSend[j]*dimensions , MPI_FLOAT , j , 7  , MPI_COMM_WORLD);
+                    }
+                }
+            }else{
+                MPI_Recv(&numberOfPointsToReceive[i],1,MPI_INT , i , 6 , MPI_COMM_WORLD , &mpistatus);
+                printf("rank %d to recv %d\n",processId , numberOfPointsToReceive[i]);
+                holderForArrPointsToRecv[i] = (float*)malloc(numberOfPointsToReceive[i]*sizeof(float)*dimensions);
+                MPI_Recv(holderForArrPointsToRecv[i],numberOfPointsToReceive[i]*dimensions , MPI_FLOAT , i , 7 , MPI_COMM_WORLD , &mpistatus);
+
+            }
+        }
+        numberOfPointsToReceive[processId] = 0;
+       /* MPI_Barrier(MPI_COMM_WORLD);
+        printf("MEEEEEEEEEEEEEINNNNNNNNNNNNN %d %d\n",processId,numberOfPointsToReceive[processId]);
+        for(int i = 0; i < noProcesses; i++){
+            for(int j = 0; j < numberOfPointsToReceive[i]; j++){
+                printf(">>>>>>>>>>>>>>>>>rank %d from %d [%d]\t",processId,i,numberOfPointsToReceive[i]);
+                for(int d = 0; d < dimensions; d++){
+                    printf("xy%d %f\t",d,holderForArrPointsToRecv[i][j*dimensions + d]);
+                }
+            }printf("\n");
+        }
+        MPI_Barrier(MPI_COMM_WORLD);*/
+        //------------------------ Find Their Knn To send to origin -------------------------//
+        
+        float** holderForNbrsToSendBack = (float**)malloc(sizeof(float*)*noProcesses);
+        
+        for(int rnk = 0; rnk < noProcesses; rnk++){
+            if(processId != rnk){
+                holderForNbrsToSendBack[rnk] = (float*)malloc(sizeof(float)*(dimensions+1)*k_for_Knn*numberOfPointsToReceive[rnk]);
+                //printf("MAALLLLOOOOCCCCCCCCCCC %d %d    of %d\n",rnk,(dimensions+1)*k_for_Knn*numberOfPointsToReceive[rnk],processId);
+                for(int p = 0; p < numberOfPointsToReceive[rnk]; p++){
+                    if(processId == rnk){
+                      //  printf("ALLLLLLLLLLLLL ABOOOOOOOOOOOOOOOOORT\n");
+                    }
+                    knnVars*  obj;
+                    obj = _initForKnnSearch(k_for_Knn , log2(partLength + 1) - 1 , dimensions , pointArr , mediansTree , 0);
+                    memcpy(obj->vp , &holderForArrPointsToRecv[rnk][p*dimensions] , dimensions*sizeof(float));
+                    startSearchKnn(obj , 0 , 0);
+                    float* nbrs_temp = getNeigbours(obj);
+                    float* testDrive = (float*)malloc(sizeof(float)*k_for_Knn*(dimensions+1));
+                    memcpy(testDrive,nbrs_temp,sizeof(float)*(dimensions+1)*k_for_Knn);
+                    memcpy(&holderForNbrsToSendBack[ rnk ][ p * k_for_Knn * (dimensions+1) ] , nbrs_temp , sizeof(float) * (dimensions+1) * k_for_Knn);
+
+                /*  for(int i = 0; i < k_for_Knn; i++){
+                        printf("Points%d from %d to %d\t",i,processId,rnk);
+                        for(int d = 0; d < dimensions; d++){
+                            printf("x%d %f\t",d,nbrs_temp[i*(dimensions+1) + d]);
+                            //printf("x%d %f\t",d,testDrive[i*(dimensions+1) + d]);
+                            printf("x%d %f\t",p*(dimensions+1)*k_for_Knn + i*(dimensions+1) + d,holderForNbrsToSendBack[rnk][p*(dimensions+1)*k_for_Knn + i*(dimensions+1) + d]);
+                        }printf("\n");
+                    }printf("------------------------------\n"); 
+                    */
+
+                    _finishKnnSearch(obj);
+                }
+            }
+        }
+
+       // for(int i = 0; i < noProcesses; i++){
+//if(processId != i){
+      //          for(int j = 0; j < numberOfPointsToReceive[i]*(dimensions+1)*k_for_Knn; j++){
+       //             printf("rnk %d ---%d/%f\n",processId,j,holderForNbrsToSendBack[i][j]);
+         //       }
+         //   }
+      //  }
+
+        float* nbrsToRecv = (float*)malloc(sizeof(float)*totalPointsToSent*(dimensions+1)*k_for_Knn);
+        float** pointerForNbrsToRecv = (float**)malloc(sizeof(float*)*noProcesses);
+        for(int i = 0; i < noProcesses; i++){
+            pointerForNbrsToRecv[i] = &nbrsToRecv[integralCounterForPointsToSent[i]*(dimensions+1)*k_for_Knn];
+            //printf("---------------------------------------------rank %d from %d integralCounter %d \n",processId , i,integralCounterForPointsToSent[i]);
+        }
+
+        for(int i = 0; i < noProcesses; i++){
+            if(processId == i){
+                for(int j = 0; j < noProcesses; j++){
+                    if(processId != j){
+                        printf("rank %d sending %d nbrs sets to %d\n",processId,numberOfPointsToReceive[j],j);
+                        MPI_Send(holderForNbrsToSendBack[j], k_for_Knn*(dimensions + 1)*numberOfPointsToReceive[j], MPI_FLOAT,j,4,MPI_COMM_WORLD );
+                    }
+                }
+            }else{
+
+                    printf("rank %d receiving %d nbrs sets from %d\n",processId,counterForPointsToSend[i],i);
+                    MPI_Recv(pointerForNbrsToRecv[i], k_for_Knn*(dimensions + 1)*counterForPointsToSend[i],MPI_FLOAT,i,4,MPI_COMM_WORLD,&mpistatus);
+            }
+        }
+
+
+        /*
+        for(int i = 0; i < totalPointsToSent; i++){
+            
+            for(int k = 0; k < k_for_Knn; k++){
+                printf("rank %d -> nbr%d -->\t",processId,k);
+                for(int j = 0; j < dimensions; j++){
+                    printf("x%d %f\t",j,nbrsToRecv[i*(dimensions+1)*k_for_Knn + k*(dimensions+1) + j]);
+                }
+            }   printf("\n");
+        }*/
+
+
+
+
+        int* counterNbrsChecked = (int*)malloc(sizeof(int) * noProcesses);
+        for(int i = 0; i < noProcesses; i++){
+            counterNbrsChecked[i] = 0;
+        }
+        for(int p = 0; p < partLength; p++){
+            if(statusArray[p] != 666){
+                int fromRank = statusArray[p];
+                float* nbrsToUse = &pointerForNbrsToRecv[fromRank][counterNbrsChecked[fromRank]*(dimensions+1)*k_for_Knn];
+                knnVars*  obj;
+                obj = _initForKnnSearch(k_for_Knn , log2(partLength + 1) - 1 , dimensions , pointArr , mediansTree , p);
+                memcpy(obj->nbrs, &nbrsSave[p*(dimensions+1)*k_for_Knn],sizeof(float)*k_for_Knn*(dimensions+1)); 
+                obj->nbrsLength = k_for_Knn;
+                for(int kn = 0; kn < k_for_Knn; kn++){
+                    addNeighbour(obj, &nbrsToUse[(dimensions+1)*kn] , nbrsToUse[(dimensions+1)*kn+dimensions]);
+                }   
+                memcpy( &nbrsSave[p*(dimensions+1)*k_for_Knn],obj->nbrs,sizeof(float)*k_for_Knn*(dimensions+1)); 
+                counterNbrsChecked[fromRank] ++ ;//= k_for_Knn*(dimensions+1);
+            }
+        }
+        free(counterForPointsToSend);
+        free(integralCounterForPointsToSent);
+        free(counterToStackPointsTosend);
+
+        free(pointsToSentForKnn);
+        free(pointerForPointsToSend);
+
+        free(numberOfPointsToReceive);
+        free(holderForArrPointsToRecv);
+
+        for(int i = 0; i < noProcesses; i++){
+            if(processId != i)
+                free(holderForNbrsToSendBack[i]);
+            }
+        free(holderForNbrsToSendBack);
+
+        free(nbrsToRecv);
+        free(pointerForNbrsToRecv);
+
+        //flagForSharedNbrs = 0;
+        //printf("reached end %d\n",processId);
+    }
+
+
+
+
+
+    free(nodeChecked); 
+    free(nodeAdded);
+
+    free(statusArray);
+
+
+    //----------- KNN FINISH ------------//
     MPI_Barrier(MPI_COMM_WORLD);
     if(processId == 0){
     gettimeofday(&startVal , NULL);
@@ -799,6 +1007,21 @@ int main(int argc , char **argv){
     }
     fclose(fileTime);
     
+    for(int i = 0; i < partLength; i++){
+        for(int j = 0; j < dimensions; j++){
+            fprintf(file , "%f,",pointArr[i*dimensions+j]);
+        }fprintf(file,"%f\n",0.0000);
+        for(int l = 0; l < k_for_Knn; l++){
+            for(int j = 0; j < dimensions; j++){
+                fprintf(file,"%f,",nbrsSave[i*(dimensions+1)*k_for_Knn+l*(dimensions+1)+j]);
+            }
+            fprintf(file,"%f\n",nbrsSave[i*(dimensions+1)*k_for_Knn+l*(dimensions + 1)+ dimensions]);
+        }
+    }
+
+    
+
+    fclose(file);
     free(nbrsSave);
     free(finalMpiTree); 
     free(mediansTree);
@@ -985,6 +1208,7 @@ void assignMpiLeavesToProcs(int level , int maxLevelplus ,  int index , int* cou
 }
 
 void checkKnnGlobally(int currentPos, int trlen , int* Status66, int* nodeAdded, int* nodeChecked ,float* vp , float* mpiTree , int dimensions, knnVars* obj){
+   // printf("DEBUG current poss %d\n",currentPos);
     if(isLeaf(currentPos,trlen) == 0){
         checkIfChildrenChecked(currentPos, nodeChecked);
         if(nodeAdded[currentPos] == 1){

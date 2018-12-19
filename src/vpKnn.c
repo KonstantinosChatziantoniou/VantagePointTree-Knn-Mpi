@@ -16,7 +16,7 @@ knnVars* _initForKnnSearch(int k, int maxLevel , int dimensions , float* points 
     v->medians = medians;
     v->dimensions = dimensions;
     v->nbrs = (float*)malloc((dimensions+1)*sizeof(int)*k);
-    v->vp = (float*)malloc(vpIndex*sizeof(float) * dimensions);
+    v->vp = (float*)malloc(sizeof(float) * dimensions);
     memcpy(v->vp , &points[vpIndex*dimensions] , sizeof(float)*dimensions);
     v->nbrsLength = 0;
     v->tau = 100000000;
@@ -69,6 +69,18 @@ float findDistance(knnVars* self,float* point , float* vp){
 void addNeighbour(knnVars* self , float* point ,float dist){
     float max = self->nbrs[self->dimensions];
     int indexMax = 0;
+    if(self->k == self->nbrsLength){
+        max = self->nbrs[self->dimensions];
+        indexMax = 0;
+        for(int i = 0; i < self->nbrsLength; i++){
+           // printf("finding max %f\n",self->nbrs[i*(self->dimensions) + self->dimensions]);
+            if(self->nbrs[i*(self->dimensions+1) + self->dimensions] > max){
+                indexMax = i;
+                max = self->nbrs[i*(self->dimensions+1) + self->dimensions];
+            }
+        }
+    self->tau = max;
+    }
     //printf("--------adding ---------\n");
     //----- if the neighbours list is not full add anyway -----//
     if(self->nbrsLength < self->k){
@@ -94,6 +106,7 @@ void addNeighbour(knnVars* self , float* point ,float dist){
             self->nbrs[indexMax*(self->dimensions+1) + self->dimensions] = dist;
         }
     }
+    /* CHANGE POSITION ----------------------------------
     if(self->k == self->nbrsLength){
         max = self->nbrs[self->dimensions];
         indexMax = 0;
@@ -106,6 +119,7 @@ void addNeighbour(knnVars* self , float* point ,float dist){
         }
     self->tau = max;
     }
+    -----------------------------------------------------*/
 }
 
 float* getNeigbours(knnVars* self){
