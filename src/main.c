@@ -334,7 +334,7 @@ int main(int argc , char **argv){
                 //printf("lengths to receieve %d %d\n",i,lengths_to_receieve[i]);
                 
             }
-
+            
             //----- Send instructions for sending and receiving points -----//
             int message[3];
             int jc = group_size/2;
@@ -608,7 +608,7 @@ int main(int argc , char **argv){
 
                 //printf("dist%d = %f\n",group_rank,dist);
                 if(dist < median){
-                   // printf("YOU SUCK! rank %d\n",group_rank);
+                   printf("YOU SUCK! rank %d\n",group_rank);
                     //for(int k = 0; k < dimensions; k++){
                        //printf("problemx%d-%d %f \t",i,group_rank,pointArr[i*dimensions + k]);
                     //}
@@ -782,6 +782,7 @@ int main(int argc , char **argv){
                 checkKnnGlobally(treeLength+statusArray[i], treeLength, &status66, &nodeAdded[i*(treeLength+noProcesses)], &nodeChecked[i*(treeLength+noProcesses)], obj->vp, finalMpiTree , dimensions, obj);
                 statusArray[i] = status66;
                 //printf("STATUS %d of point %d of proc %d\n",status66, i, processId);
+                 memcpy( &nbrsSave[i*(dimensions+1)],obj->nbrs,sizeof(float)*k_for_Knn*(dimensions+1));
                 _finishKnnSearch(obj);
             }
         }
