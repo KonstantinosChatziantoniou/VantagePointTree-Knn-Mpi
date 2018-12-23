@@ -767,7 +767,7 @@ int main(int argc , char **argv){
         }
         statusArray[i] = processId;
     }
-
+    int debugLoopCounter = 0;
     while(flagForSharedNbrs == 1){
         //----------- CHECK the whole tree --------------//
         for(int i = 0; i < partLength; i++){
@@ -988,6 +988,7 @@ int main(int argc , char **argv){
 
         //flagForSharedNbrs = 0;
         //printf("reached end %d\n",processId);
+        printf("DEBUG ITER NO %d , of rank %d\n",++debugLoopCounter , processId);
     }
 
 
@@ -1116,6 +1117,9 @@ void STVantagePointTree(float* pointArr ,float* numberPart , int length , int di
     int len_arr_big;
     int len_arr_small;
     partition(numPartToUse , length , median , &arr_small , &arr_big , &len_arr_small , &len_arr_big , arrToUse);
+     if(len_arr_small == 0){
+        arr_small = numPartToUse;
+    }
     //---- swap the median to the low part ----//
     //int countMax , countMin , countEq;
     //validationST(median , length , numberPart , &countMin , &countMax , &countEq);
@@ -1133,9 +1137,7 @@ void STVantagePointTree(float* pointArr ,float* numberPart , int length , int di
         }
         
     }
-    if(len_arr_small == 0){
-        arr_small = numPartToUse;
-    }
+   
     //printf("len arr small %d        len arr big %d\n",len_arr_small , len_arr_big);
     //len_arr_small++;
     //len_arr_big--;
@@ -1150,7 +1152,10 @@ void STVantagePointTree(float* pointArr ,float* numberPart , int length , int di
     for(int i = 0; i < len_arr_big; i++){
        // printf("arrbig: %f\n",arr_big[i]);
     }
-    //printf("LLLLLLLLEEFIIXXXXXEEEDDDTHHHHSSS %d big %d\n",len_arr_small , len_arr_big);
+   // printf("LLLLLLLLEEFIIXXXXXEEEDDDTHHHHSSS %d big %d\n",len_arr_small , len_arr_big);
+    if(len_arr_big != len_arr_small){
+        printf("ERRRRRRRRRROOOOOOOOOORRRRRRRRRR   small %d big %d\n",len_arr_small , len_arr_big);
+    }
     arr_big = &numPartToUse[len_arr_small];
     STVantagePointTree(arrToUse , arr_small , len_arr_small , dimensions);
     STVantagePointTree(&arrToUse[len_arr_small*dimensions] , arr_big , len_arr_big , dimensions);

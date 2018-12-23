@@ -1,0 +1,6 @@
+c = categorical({'16procs/4nodes', '16procs/2nodes' , '8procs/4nodes' , '8procs/2nodes'});
+c = reordercats(c ,{'16procs/4nodes', '16procs/2nodes' , '8procs/4nodes' , '8procs/2nodes'});
+Times = [14-214131e-6 , 17.114123 , 13 - 0.116194 , 11-0.405144 , 16.393554 ]; 
+TimesKnn = [4.251333 ,  5 - 0.182228  , 9.189922 , 7 - 0.113627 ]; 
+
+b = bar(c,Times,'FaceColor','flat');

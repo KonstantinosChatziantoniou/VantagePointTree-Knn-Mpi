@@ -1,0 +1,28 @@
+%% data
+categorical({'16procs/4nodes', '16procs/2nodes' , '8procs/4nodes' , '8procs/2nodes' , '8procs1node', '4procs/4nodes','4procs/2nodes',' 4procs1node' ,'2procs/2nodes','2procs1node' ,'1proc'});
+c = reordercats(c ,{'16procs/4nodes', '16procs/2nodes' , '8procs/4nodes' , '8procs/2nodes' , '8procs1node', '4procs/4nodes','4procs/2nodes',' 4procs1node' ,'2procs/2nodes','2procs1node','1proc'});
+VPtime = zeros(11,1);
+Knntime = zeros(11,1);
+
+
+%using fastest time
+VPtime(1) = [1.755594 , 1.755594 , 2.037593, 2.702081 ];
+Knntime(1) = [1775 , 1291 , 1671 , 1775 ];
+VPtime(2) = [1 - 0.065764, 3.641971 , 5 - 0.011990  1 -0.065764 ];
+Knntime(2) = [298 , 298 , 1638];
+VPtime(3) = [1.860414, 2-0.052127 , 1.860414 , 2 - 0.089894  ];
+Knntime(3) = [1100 , 1104 , 981
+VPtime(4) = [2-0.376418 , 4.193004 , 2.292043 ];
+
+VPtime(5) = [4 - 0.644672 , 5 - 0.156545 , 2 - 0.478380];
+
+VPtime(5) = [4 - 0.490601, 3.5735 , 3.5533 ];
+Knntime(5) = [667 , 710 , 553 ];
+VPtime(6) = [3.544716 , 3.245795];
+Knntime(6) = [730 , 482];
+VPtime(7) = [5 - 0.4929, 3 - 0.365 , 3.4031];
+Knntime(7) = [485 , 659 , 420];
+VPtime(8) = [6.716 , 7 - 0.733 ];
+Knntime(8) = [383 , 371];
+VPtime(9) = [7 - 0.651771 ];
+Knntime(9) = [347 ];
